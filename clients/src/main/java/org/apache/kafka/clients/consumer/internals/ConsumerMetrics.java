@@ -17,25 +17,24 @@
 package org.apache.kafka.clients.consumer.internals;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import org.apache.kafka.common.MetricNameTemplate;
+import org.apache.kafka.common.metrics.MetricConfig;
 import org.apache.kafka.common.metrics.Metrics;
 
 public class ConsumerMetrics {
     
     public FetcherMetricsRegistry fetcherMetrics;
+    private Metrics metrics;
     
-    public ConsumerMetrics(Set<String> metricsTags, String metricGrpPrefix) {
-        this.fetcherMetrics = new FetcherMetricsRegistry(metricsTags, metricGrpPrefix);
+    public ConsumerMetrics(Metrics metrics) {
+        this.metrics = metrics;
+        this.fetcherMetrics = new FetcherMetricsRegistry(this.metrics);
     }
-
-    public ConsumerMetrics(String metricGroupPrefix) {
-        this(new HashSet<String>(), metricGroupPrefix);
-    }
-
+    
     private List<MetricNameTemplate> getAllTemplates() {
         List<MetricNameTemplate> l = new ArrayList<>();
         l.addAll(this.fetcherMetrics.getAllTemplates());
@@ -43,9 +42,11 @@ public class ConsumerMetrics {
     }
 
     public static void main(String[] args) {
-        Set<String> tags = new HashSet<>();
-        tags.add("client-id");
-        ConsumerMetrics metrics = new ConsumerMetrics(tags, "consumer");
-        System.out.println(Metrics.toHtmlTable("kafka.consumer", metrics.getAllTemplates()));
+        Map<String, String> metricTags = Collections.singletonMap("client-id", "client-id");
+        MetricConfig metricConfig = new MetricConfig().tags(metricTags);
+        Metrics metrics = new Metrics(metricConfig);
+
+        ConsumerMetrics metricsRegistry = new ConsumerMetrics(metrics);
+        System.out.println(Metrics.toHtmlTable("kafka.consumer", metricsRegistry.getAllTemplates()));
     }
 }

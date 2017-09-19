@@ -112,8 +112,7 @@ import static org.junit.Assert.fail;
 public class FetcherTest {
     private ConsumerRebalanceListener listener = new NoOpConsumerRebalanceListener();
     private String topicName = "test";
-    private String groupId = "test-group";
-    private final String metricGroup = "consumer" + groupId + "-fetch-manager-metrics";
+    private final String metricGroup = "consumer-fetch-manager-metrics";
     private TopicPartition tp0 = new TopicPartition(topicName, 0);
     private TopicPartition tp1 = new TopicPartition(topicName, 1);
     private int minBytes = 1;
@@ -127,7 +126,7 @@ public class FetcherTest {
     private Cluster cluster = TestUtils.singletonCluster(topicName, 2);
     private Node node = cluster.nodes().get(0);
     private Metrics metrics = new Metrics(time);
-    FetcherMetricsRegistry metricsRegistry = new FetcherMetricsRegistry("consumer" + groupId);
+    private FetcherMetricsRegistry metricsRegistry = new FetcherMetricsRegistry(metrics);
 
     private SubscriptionState subscriptions = new SubscriptionState(OffsetResetStrategy.EARLIEST);
     private SubscriptionState subscriptionsNoAutoReset = new SubscriptionState(OffsetResetStrategy.NONE);
@@ -1368,7 +1367,7 @@ public class FetcherTest {
         metrics.close();
         Map<String, String> clientTags = Collections.singletonMap("client-id", "clientA");
         metrics = new Metrics(new MetricConfig().tags(clientTags));
-        metricsRegistry = new FetcherMetricsRegistry(clientTags.keySet(), "consumer" + groupId);
+        metricsRegistry = new FetcherMetricsRegistry(metrics);
         fetcher.close();
         fetcher = createFetcher(subscriptions, metrics);
 
@@ -2088,7 +2087,7 @@ public class FetcherTest {
                 metadata,
                 subscriptions,
                 metrics,
-                metricsRegistry,
+                new FetcherMetricsRegistry(metrics),
                 time,
                 retryBackoffMs,
                 isolationLevel);
