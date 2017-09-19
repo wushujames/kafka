@@ -1124,7 +1124,7 @@ public class FetcherTest {
     @Test
     public void testQuotaMetrics() throws Exception {
         MockSelector selector = new MockSelector(time);
-        Sensor throttleTimeSensor = Fetcher.throttleTimeSensor(metrics, metricsRegistry);
+        Sensor throttleTimeSensor = Fetcher.throttleTimeSensor(metricsRegistry);
         Cluster cluster = TestUtils.singletonCluster("test", 1);
         Node node = cluster.nodes().get(0);
         NetworkClient client = new NetworkClient(selector, metadata, "mock", Integer.MAX_VALUE,
@@ -1381,7 +1381,7 @@ public class FetcherTest {
         assertTrue(partitionRecords.containsKey(tp0));
 
         // Create throttle metrics
-        Fetcher.throttleTimeSensor(metrics, metricsRegistry);
+        Fetcher.throttleTimeSensor(metricsRegistry);
 
         // Verify that all metrics except metrics-count have registered templates
         Set<MetricNameTemplate> allMetrics = new HashSet<>();
