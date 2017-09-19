@@ -761,7 +761,6 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     this.valueDeserializer,
                     this.metadata,
                     this.subscriptions,
-                    metrics,
                     metricsRegistry.fetcherMetrics,
                     this.time,
                     this.retryBackoffMs,

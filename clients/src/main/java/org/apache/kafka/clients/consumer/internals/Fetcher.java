@@ -38,7 +38,6 @@ import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.metrics.Sensor;
 import org.apache.kafka.common.metrics.stats.Avg;
 import org.apache.kafka.common.metrics.stats.Count;
@@ -125,7 +124,6 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                    Deserializer<V> valueDeserializer,
                    Metadata metadata,
                    SubscriptionState subscriptions,
-                   Metrics metrics,
                    FetcherMetricsRegistry metricsRegistry,
                    Time time,
                    long retryBackoffMs,

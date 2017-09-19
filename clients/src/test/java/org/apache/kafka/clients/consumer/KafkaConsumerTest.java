@@ -1658,7 +1658,6 @@ public class KafkaConsumerTest {
                 valueDeserializer,
                 metadata,
                 subscriptions,
-                metrics,
                 metricsRegistry.fetcherMetrics,
                 time,
                 retryBackoffMs,

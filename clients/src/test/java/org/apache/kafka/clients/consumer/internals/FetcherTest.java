@@ -2085,7 +2085,6 @@ public class FetcherTest {
                 valueDeserializer,
                 metadata,
                 subscriptions,
-                metrics,
                 new FetcherMetricsRegistry(metrics),
                 time,
                 retryBackoffMs,
