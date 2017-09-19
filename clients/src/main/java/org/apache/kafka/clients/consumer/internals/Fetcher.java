@@ -937,11 +937,11 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         sensors.updatePartitionLagSensors(assignment);
     }
 
-    public static Sensor throttleTimeSensor(FetcherMetricsRegistry metricsRegistry) {
-        Sensor fetchThrottleTimeSensor = metricsRegistry.sensor("fetch-throttle-time");
-        fetchThrottleTimeSensor.add(metricsRegistry.getFetchThrottleTimeAvg(), new Avg());
+    public static Sensor throttleTimeSensor(FetcherMetricsRegistry metrics) {
+        Sensor fetchThrottleTimeSensor = metrics.sensor("fetch-throttle-time");
+        fetchThrottleTimeSensor.add(metrics.getFetchThrottleTimeAvg(), new Avg());
 
-        fetchThrottleTimeSensor.add(metricsRegistry.getFetchThrottleTimeMax(), new Max());
+        fetchThrottleTimeSensor.add(metrics.getFetchThrottleTimeMax(), new Max());
 
         return fetchThrottleTimeSensor;
     }
