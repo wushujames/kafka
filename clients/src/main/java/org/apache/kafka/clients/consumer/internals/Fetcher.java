@@ -1244,7 +1244,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     }
 
     private static class FetchManagerMetrics {
-        private FetcherMetricsRegistry metricsRegistry;
+        private FetcherMetricsRegistry metrics;
         private final Sensor bytesFetched;
         private final Sensor recordsFetched;
         private final Sensor fetchLatency;
@@ -1252,56 +1252,56 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
 
         private Set<TopicPartition> assignedPartitions;
 
-        private FetchManagerMetrics(FetcherMetricsRegistry metricsRegistry) {
-            this.metricsRegistry = metricsRegistry;
+        private FetchManagerMetrics(FetcherMetricsRegistry metrics) {
+            this.metrics = metrics;
 
-            this.bytesFetched = metricsRegistry.sensor("bytes-fetched");
-            this.bytesFetched.add(metricsRegistry.getFetchSizeAvg(), new Avg());
-            this.bytesFetched.add(metricsRegistry.getFetchSizeMax(), new Max());
-            this.bytesFetched.add(new Meter(metricsRegistry.getBytesConsumedRate(),
-                    metricsRegistry.getBytesConsumedTotal()));
+            this.bytesFetched = metrics.sensor("bytes-fetched");
+            this.bytesFetched.add(metrics.getFetchSizeAvg(), new Avg());
+            this.bytesFetched.add(metrics.getFetchSizeMax(), new Max());
+            this.bytesFetched.add(new Meter(metrics.getBytesConsumedRate(),
+                    metrics.getBytesConsumedTotal()));
 
-            this.recordsFetched = metricsRegistry.sensor("records-fetched");
-            this.recordsFetched.add(metricsRegistry.getRecordsPerRequestAvg(), new Avg());
-            this.recordsFetched.add(new Meter(metricsRegistry.getRecordsConsumedRate(),
-                    metricsRegistry.getRecordsConsumedTotal()));
+            this.recordsFetched = metrics.sensor("records-fetched");
+            this.recordsFetched.add(metrics.getRecordsPerRequestAvg(), new Avg());
+            this.recordsFetched.add(new Meter(metrics.getRecordsConsumedRate(),
+                    metrics.getRecordsConsumedTotal()));
 
-            this.fetchLatency = metricsRegistry.sensor("fetch-latency");
-            this.fetchLatency.add(metricsRegistry.getFetchLatencyAvg(), new Avg());
-            this.fetchLatency.add(metricsRegistry.getFetchLatencyMax(), new Max());
-            this.fetchLatency.add(new Meter(new Count(), metricsRegistry.getFetchRequestRate(),
-                    metricsRegistry.getFetchRequestTotal()));
+            this.fetchLatency = metrics.sensor("fetch-latency");
+            this.fetchLatency.add(metrics.getFetchLatencyAvg(), new Avg());
+            this.fetchLatency.add(metrics.getFetchLatencyMax(), new Max());
+            this.fetchLatency.add(new Meter(new Count(), metrics.getFetchRequestRate(),
+                    metrics.getFetchRequestTotal()));
 
-            this.recordsFetchLag = metricsRegistry.sensor("records-lag");
-            this.recordsFetchLag.add(metricsRegistry.getRecordsLagMax(), new Max());
+            this.recordsFetchLag = metrics.sensor("records-lag");
+            this.recordsFetchLag.add(metrics.getRecordsLagMax(), new Max());
         }
 
         private void recordTopicFetchMetrics(String topic, int bytes, int records) {
             // record bytes fetched
             String name = "topic." + topic + ".bytes-fetched";
-            Sensor bytesFetched = this.metricsRegistry.getSensor(name);
+            Sensor bytesFetched = this.metrics.getSensor(name);
             if (bytesFetched == null) {
                 Map<String, String> metricTags = Collections.singletonMap("topic", topic.replace('.', '_'));
 
-                bytesFetched = this.metricsRegistry.sensor(name);
-                bytesFetched.add(metricsRegistry.getTopicFetchSizeAvg(metricTags), new Avg());
-                bytesFetched.add(metricsRegistry.getTopicFetchSizeMax(metricTags), new Max());
-                bytesFetched.add(new Meter(metricsRegistry.getTopicBytesConsumedRate(metricTags),
-                        metricsRegistry.getTopicBytesConsumedTotal(metricTags)));
+                bytesFetched = this.metrics.sensor(name);
+                bytesFetched.add(metrics.getTopicFetchSizeAvg(metricTags), new Avg());
+                bytesFetched.add(metrics.getTopicFetchSizeMax(metricTags), new Max());
+                bytesFetched.add(new Meter(metrics.getTopicBytesConsumedRate(metricTags),
+                        metrics.getTopicBytesConsumedTotal(metricTags)));
             }
             bytesFetched.record(bytes);
 
             // record records fetched
             name = "topic." + topic + ".records-fetched";
-            Sensor recordsFetched = this.metricsRegistry.getSensor(name);
+            Sensor recordsFetched = this.metrics.getSensor(name);
             if (recordsFetched == null) {
                 Map<String, String> metricTags = new HashMap<>(1);
                 metricTags.put("topic", topic.replace('.', '_'));
 
-                recordsFetched = this.metricsRegistry.sensor(name);
-                recordsFetched.add(metricsRegistry.getTopicRecordsPerRequestAvg(metricTags), new Avg());
-                recordsFetched.add(new Meter(metricsRegistry.getTopicRecordsConsumedRate(metricTags),
-                        metricsRegistry.getTopicRecordsConsumedTotal(metricTags)));
+                recordsFetched = this.metrics.sensor(name);
+                recordsFetched.add(metrics.getTopicRecordsPerRequestAvg(metricTags), new Avg());
+                recordsFetched.add(new Meter(metrics.getTopicRecordsConsumedRate(metricTags),
+                        metrics.getTopicRecordsConsumedTotal(metricTags)));
             }
             recordsFetched.record(records);
         }
@@ -1310,7 +1310,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             if (this.assignedPartitions != null) {
                 for (TopicPartition tp : this.assignedPartitions) {
                     if (!assignedPartitions.contains(tp))
-                        metricsRegistry.removeSensor(partitionLagMetricName(tp));
+                        metrics.removeSensor(partitionLagMetricName(tp));
                 }
             }
             this.assignedPartitions = assignedPartitions;
@@ -1320,12 +1320,12 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             this.recordsFetchLag.record(lag);
 
             String name = partitionLagMetricName(tp);
-            Sensor recordsLag = this.metricsRegistry.getSensor(name);
+            Sensor recordsLag = this.metrics.getSensor(name);
             if (recordsLag == null) {
-                recordsLag = this.metricsRegistry.sensor(name);
-                recordsLag.add(metricsRegistry.getPartitionRecordsLag(name), new Value());
-                recordsLag.add(metricsRegistry.getPartitionRecordsLagMax(name), new Max());
-                recordsLag.add(metricsRegistry.getPartitionRecordsLagAvg(name), new Avg());
+                recordsLag = this.metrics.sensor(name);
+                recordsLag.add(metrics.getPartitionRecordsLag(name), new Value());
+                recordsLag.add(metrics.getPartitionRecordsLagMax(name), new Max());
+                recordsLag.add(metrics.getPartitionRecordsLagAvg(name), new Avg());
             }
             recordsLag.record(lag);
         }
