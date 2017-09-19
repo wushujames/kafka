@@ -939,9 +939,9 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
 
     public static Sensor throttleTimeSensor(Metrics metrics, FetcherMetricsRegistry metricsRegistry) {
         Sensor fetchThrottleTimeSensor = metrics.sensor("fetch-throttle-time");
-        fetchThrottleTimeSensor.add(metrics.metricInstance(metricsRegistry.fetchThrottleTimeAvg), new Avg());
+        fetchThrottleTimeSensor.add(metricsRegistry.getFetchThrottleTimeAvg(), new Avg());
 
-        fetchThrottleTimeSensor.add(metrics.metricInstance(metricsRegistry.fetchThrottleTimeMax), new Max());
+        fetchThrottleTimeSensor.add(metricsRegistry.getFetchThrottleTimeMax(), new Max());
 
         return fetchThrottleTimeSensor;
     }
