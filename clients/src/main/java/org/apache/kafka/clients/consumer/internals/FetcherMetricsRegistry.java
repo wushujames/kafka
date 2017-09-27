@@ -69,39 +69,54 @@ public class FetcherMetricsRegistry {
         this.allTemplates = new ArrayList<MetricNameTemplate>();
 
         /***** Client level *****/
-        this.fetchSizeAvg = createMetricName("fetch-size-avg", "The average number of bytes fetched per request");
-
-        this.fetchSizeMax = createMetricName("fetch-size-max", "The maximum number of bytes fetched per request");
-        this.bytesConsumedRate = createMetricName("bytes-consumed-rate", "The average number of bytes consumed per second");
-        this.bytesConsumedTotal = createMetricName("bytes-consumed-total", "The total number of bytes consumed");
-
-        this.recordsPerRequestAvg = createMetricName("records-per-request-avg", "The average number of records in each request");
-        this.recordsConsumedRate = createMetricName("records-consumed-rate", "The average number of records consumed per second");
-        this.recordsConsumedTotal = createMetricName("records-consumed-total", "The total number of records consumed");
-
-        this.fetchLatencyAvg = createMetricName("fetch-latency-avg", "The average time taken for a fetch request.");
-        this.fetchLatencyMax = createMetricName("fetch-latency-max", "The max time taken for any fetch request.");
-        this.fetchRequestRate = createMetricName("fetch-rate", "The number of fetch requests per second.");
-        this.fetchRequestTotal = createMetricName("fetch-total", "The total number of fetch requests.");
-
-        this.recordsLagMax = createMetricName("records-lag-max", "The maximum lag in terms of number of records for any partition in this window");
-
-        this.fetchThrottleTimeAvg = createMetricName("fetch-throttle-time-avg", "The average throttle time in ms");
-        this.fetchThrottleTimeMax = createMetricName("fetch-throttle-time-max", "The maximum throttle time in ms");
+        this.fetchSizeAvg = createMetricName("fetch-size-avg",
+                "The average number of bytes fetched per request");
+        this.fetchSizeMax = createMetricName("fetch-size-max",
+                "The maximum number of bytes fetched per request");
+        this.bytesConsumedRate = createMetricName("bytes-consumed-rate",
+                "The average number of bytes consumed per second");
+        this.bytesConsumedTotal = createMetricName("bytes-consumed-total",
+                "The total number of bytes consumed");
+        this.recordsPerRequestAvg = createMetricName("records-per-request-avg",
+                "The average number of records in each request");
+        this.recordsConsumedRate = createMetricName("records-consumed-rate",
+                "The average number of records consumed per second");
+        this.recordsConsumedTotal = createMetricName("records-consumed-total",
+                "The total number of records consumed");
+        this.fetchLatencyAvg = createMetricName("fetch-latency-avg",
+                "The average time taken for a fetch request.");
+        this.fetchLatencyMax = createMetricName("fetch-latency-max",
+                "The max time taken for any fetch request.");
+        this.fetchRequestRate = createMetricName("fetch-rate",
+                "The number of fetch requests per second.");
+        this.fetchRequestTotal = createMetricName("fetch-total",
+                "The total number of fetch requests.");
+        this.recordsLagMax = createMetricName("records-lag-max",
+                "The maximum lag in terms of number of records for any partition in this window");
+        this.fetchThrottleTimeAvg = createMetricName("fetch-throttle-time-avg", 
+                "The average throttle time in ms");
+        this.fetchThrottleTimeMax = createMetricName("fetch-throttle-time-max", 
+                "The maximum throttle time in ms");
 
         /***** Topic level *****/
         this.topicTags = new HashSet<>(tags);
         this.topicTags.add("topic");
 
         // We can't create the MetricName up front for these, because we don't know the topic name yet.
-        this.topicFetchSizeAvg = createTopicTemplate("fetch-size-avg", "The average number of bytes fetched per request for a topic");
-        this.topicFetchSizeMax = createTopicTemplate("fetch-size-max", "The maximum number of bytes fetched per request for a topic");
-        this.topicBytesConsumedRate = createTopicTemplate("bytes-consumed-rate", "The average number of bytes consumed per second for a topic");
-        this.topicBytesConsumedTotal = createTopicTemplate("bytes-consumed-total", "The total number of bytes consumed for a topic");
-
-        this.topicRecordsPerRequestAvg = createTopicTemplate("records-per-request-avg", "The average number of records in each request for a topic");
-        this.topicRecordsConsumedRate = createTopicTemplate("records-consumed-rate", "The average number of records consumed per second for a topic");
-        this.topicRecordsConsumedTotal = createTopicTemplate("records-consumed-total", "The total number of records consumed for a topic");
+        this.topicFetchSizeAvg = createTopicTemplate("fetch-size-avg",
+                "The average number of bytes fetched per request for a topic");
+        this.topicFetchSizeMax = createTopicTemplate("fetch-size-max",
+                "The maximum number of bytes fetched per request for a topic");
+        this.topicBytesConsumedRate = createTopicTemplate("bytes-consumed-rate",
+                "The average number of bytes consumed per second for a topic");
+        this.topicBytesConsumedTotal = createTopicTemplate("bytes-consumed-total",
+                "The total number of bytes consumed for a topic");
+        this.topicRecordsPerRequestAvg = createTopicTemplate("records-per-request-avg",
+                "The average number of records in each request for a topic");
+        this.topicRecordsConsumedRate = createTopicTemplate("records-consumed-rate",
+                "The average number of records consumed per second for a topic");
+        this.topicRecordsConsumedTotal = createTopicTemplate("records-consumed-total",
+                "The total number of records consumed for a topic");
         
         /***** Partition level *****/
         // We can't create the MetricName up front for these, because we don't know the topic and partition name.
