@@ -234,7 +234,7 @@ public class FetcherMetricsRegistry {
                 partitionRecordsLagAvg.description());
     }
 
-    public List<MetricNameTemplate> getAllTemplates() {
+    public List<MetricNameTemplate> allTemplates() {
         return allTemplates;
     }
     

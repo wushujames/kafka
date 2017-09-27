@@ -35,9 +35,9 @@ public class ConsumerMetrics {
         this.fetcherMetrics = new FetcherMetricsRegistry(this.metrics);
     }
     
-    private List<MetricNameTemplate> getAllTemplates() {
+    private List<MetricNameTemplate> allTemplates() {
         List<MetricNameTemplate> l = new ArrayList<>();
-        l.addAll(this.fetcherMetrics.getAllTemplates());
+        l.addAll(this.fetcherMetrics.allTemplates());
         return l;
     }
 
@@ -47,6 +47,6 @@ public class ConsumerMetrics {
         Metrics metrics = new Metrics(metricConfig);
 
         ConsumerMetrics metricsRegistry = new ConsumerMetrics(metrics);
-        System.out.println(Metrics.toHtmlTable("kafka.consumer", metricsRegistry.getAllTemplates()));
+        System.out.println(Metrics.toHtmlTable("kafka.consumer", metricsRegistry.allTemplates()));
     }
 }
