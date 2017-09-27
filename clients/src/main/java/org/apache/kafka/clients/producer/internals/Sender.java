@@ -28,6 +28,7 @@ import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.ClusterAuthorizationException;
 import org.apache.kafka.common.errors.InvalidMetadataException;
 import org.apache.kafka.common.errors.OutOfOrderSequenceException;
@@ -198,32 +199,38 @@ public class Sender implements Runnable {
      */
     void run(long now) {
         if (transactionManager != null) {
-            if (transactionManager.shouldResetProducerStateAfterResolvingSequences())
-                // Check if the previous run expired batches which requires a reset of the producer state.
-                transactionManager.resetProducerId();
+            try {
+                if (transactionManager.shouldResetProducerStateAfterResolvingSequences())
+                    // Check if the previous run expired batches which requires a reset of the producer state.
+                    transactionManager.resetProducerId();
 
-            if (!transactionManager.isTransactional()) {
-                // this is an idempotent producer, so make sure we have a producer id
-                maybeWaitForProducerId();
-            } else if (transactionManager.hasUnresolvedSequences() && !transactionManager.hasFatalError()) {
-                transactionManager.transitionToFatalError(new KafkaException("The client hasn't received acknowledgment for " +
-                        "some previously sent messages and can no longer retry them. It isn't safe to continue."));
-            } else if (transactionManager.hasInFlightTransactionalRequest() || maybeSendTransactionalRequest(now)) {
-                // as long as there are outstanding transactional requests, we simply wait for them to return
-                client.poll(retryBackoffMs, now);
-                return;
-            }
+                if (!transactionManager.isTransactional()) {
+                    // this is an idempotent producer, so make sure we have a producer id
+                    maybeWaitForProducerId();
+                } else if (transactionManager.hasUnresolvedSequences() && !transactionManager.hasFatalError()) {
+                    transactionManager.transitionToFatalError(new KafkaException("The client hasn't received acknowledgment for " +
+                            "some previously sent messages and can no longer retry them. It isn't safe to continue."));
+                } else if (transactionManager.hasInFlightTransactionalRequest() || maybeSendTransactionalRequest(now)) {
+                    // as long as there are outstanding transactional requests, we simply wait for them to return
+                    client.poll(retryBackoffMs, now);
+                    return;
+                }
 
-            // do not continue sending if the transaction manager is in a failed state or if there
-            // is no producer id (for the idempotent case).
-            if (transactionManager.hasFatalError() || !transactionManager.hasProducerId()) {
-                RuntimeException lastError = transactionManager.lastError();
-                if (lastError != null)
-                    maybeAbortBatches(lastError);
-                client.poll(retryBackoffMs, now);
-                return;
-            } else if (transactionManager.hasAbortableError()) {
-                accumulator.abortUndrainedBatches(transactionManager.lastError());
+                // do not continue sending if the transaction manager is in a failed state or if there
+                // is no producer id (for the idempotent case).
+                if (transactionManager.hasFatalError() || !transactionManager.hasProducerId()) {
+                    RuntimeException lastError = transactionManager.lastError();
+                    if (lastError != null)
+                        maybeAbortBatches(lastError);
+                    client.poll(retryBackoffMs, now);
+                    return;
+                } else if (transactionManager.hasAbortableError()) {
+                    accumulator.abortUndrainedBatches(transactionManager.lastError());
+                }
+            } catch (AuthenticationException e) {
+                // This is already logged as error, but propagated here to perform any clean ups.
+                log.trace("Authentication exception while processing transactional request: {}", e);
+                transactionManager.authenticationFailed(e);
             }
         }
 
@@ -404,7 +411,7 @@ public class Sender implements Runnable {
 
     private Node awaitLeastLoadedNodeReady(long remainingTimeMs) throws IOException {
         Node node = client.leastLoadedNode(time.milliseconds());
-        if (NetworkClientUtils.awaitReady(client, node, time, remainingTimeMs)) {
+        if (node != null && NetworkClientUtils.awaitReady(client, node, time, remainingTimeMs)) {
             return node;
         }
         return null;
@@ -509,7 +516,7 @@ public class Sender implements Runnable {
             this.accumulator.deallocate(batch);
             this.sensors.recordBatchSplit();
         } else if (error != Errors.NONE) {
-            if (canRetry(batch, error)) {
+            if (canRetry(batch, response)) {
                 log.warn("Got error produce response with correlation id {} on topic-partition {}, retrying ({} attempts left). Error: {}",
                         correlationId,
                         batch.topicPartition,
@@ -576,6 +583,7 @@ public class Sender implements Runnable {
                 log.debug("ProducerId: {}; Set last ack'd sequence number for topic-partition {} to {}", batch.producerId(), batch.topicPartition,
                         transactionManager.lastAckedSequence(batch.topicPartition));
             }
+            transactionManager.updateLastAckedOffset(response, batch);
             transactionManager.removeInFlightBatch(batch);
         }
 
@@ -592,9 +600,9 @@ public class Sender implements Runnable {
             if (exception instanceof OutOfOrderSequenceException
                     && !transactionManager.isTransactional()
                     && transactionManager.hasProducerId(batch.producerId())) {
-                log.error("The broker received an out of order sequence number for topic-partition " +
+                log.error("The broker returned {} for topic-partition " +
                                 "{} at offset {}. This indicates data loss on the broker, and should be investigated.",
-                        batch.topicPartition, baseOffset);
+                        exception, batch.topicPartition, baseOffset);
 
                 // Reset the transaction state since we have hit an irrecoverable exception and cannot make any guarantees
                 // about the previously committed message. Note that this will discard the producer id and sequence
@@ -614,6 +622,7 @@ public class Sender implements Runnable {
         }
 
         this.sensors.recordErrors(batch.topicPartition.topic(), batch.recordCount);
+
         batch.done(baseOffset, logAppendTime, exception);
         this.accumulator.deallocate(batch);
     }
@@ -623,11 +632,10 @@ public class Sender implements Runnable {
      * We can also retry OutOfOrderSequence exceptions for future batches, since if the first batch has failed, the future
      * batches are certain to fail with an OutOfOrderSequence exception.
      */
-    private boolean canRetry(ProducerBatch batch, Errors error) {
+    private boolean canRetry(ProducerBatch batch, ProduceResponse.PartitionResponse response) {
         return batch.attempts() < this.retries &&
-                ((error.exception() instanceof RetriableException) ||
-                        (error.exception() instanceof OutOfOrderSequenceException
-                                && transactionManager.canRetryOutOfOrderSequenceException(batch)));
+                ((response.error.exception() instanceof RetriableException) ||
+                        (transactionManager != null && transactionManager.canRetry(response, batch)));
     }
 
     /**
@@ -676,7 +684,7 @@ public class Sender implements Runnable {
         if (transactionManager != null && transactionManager.isTransactional()) {
             transactionalId = transactionManager.transactionalId();
         }
-        ProduceRequest.Builder requestBuilder = new ProduceRequest.Builder(minUsedMagic, acks, timeout,
+        ProduceRequest.Builder requestBuilder = ProduceRequest.Builder.forMagic(minUsedMagic, acks, timeout,
                 produceRecordsByPartition, transactionalId);
         RequestCompletionHandler callback = new RequestCompletionHandler() {
             public void onComplete(ClientResponse response) {
@@ -699,10 +707,8 @@ public class Sender implements Runnable {
 
     public static Sensor throttleTimeSensor(SenderMetricsRegistry metrics) {
         Sensor produceThrottleTimeSensor = metrics.sensor("produce-throttle-time");
-        MetricName m = metrics.getProduceThrottleTimeAvg();
-        produceThrottleTimeSensor.add(m, new Avg());
-        m = metrics.getProduceThrottleTimeMax();
-        produceThrottleTimeSensor.add(m, new Max());
+        produceThrottleTimeSensor.add(metrics.produceThrottleTimeAvg, new Avg());
+        produceThrottleTimeSensor.add(metrics.produceThrottleTimeMax, new Max());
         return produceThrottleTimeSensor;
     }
 
@@ -719,73 +725,53 @@ public class Sender implements Runnable {
         public final Sensor compressionRateSensor;
         public final Sensor maxRecordSizeSensor;
         public final Sensor batchSplitSensor;
-        private SenderMetricsRegistry metrics;
+        private final SenderMetricsRegistry metrics;
 
         public SenderMetrics(SenderMetricsRegistry metrics) {
             this.metrics = metrics;
 
             this.batchSizeSensor = metrics.sensor("batch-size");
-            MetricName m = metrics.getBatchSizeAvg();
-            this.batchSizeSensor.add(m, new Avg());
-            m = metrics.getBatchSizeMax();
-            this.batchSizeSensor.add(m, new Max());
+            this.batchSizeSensor.add(metrics.batchSizeAvg, new Avg());
+            this.batchSizeSensor.add(metrics.batchSizeMax, new Max());
 
             this.compressionRateSensor = metrics.sensor("compression-rate");
-            m = metrics.getCompressionRateAvg();
-            this.compressionRateSensor.add(m, new Avg());
+            this.compressionRateSensor.add(metrics.compressionRateAvg, new Avg());
 
             this.queueTimeSensor = metrics.sensor("queue-time");
-            m = metrics.getRecordQueueTimeAvg();
-            this.queueTimeSensor.add(m, new Avg());
-            m = metrics.getRecordQueueTimeMax();
-            this.queueTimeSensor.add(m, new Max());
+            this.queueTimeSensor.add(metrics.recordQueueTimeAvg, new Avg());
+            this.queueTimeSensor.add(metrics.recordQueueTimeMax, new Max());
 
             this.requestTimeSensor = metrics.sensor("request-time");
-            m = metrics.getRequestLatencyAvg();
-            this.requestTimeSensor.add(m, new Avg());
-            m = metrics.getRequestLatencyMax();
-            this.requestTimeSensor.add(m, new Max());
+            this.requestTimeSensor.add(metrics.requestLatencyAvg, new Avg());
+            this.requestTimeSensor.add(metrics.requestLatencyMax, new Max());
 
             this.recordsPerRequestSensor = metrics.sensor("records-per-request");
-            MetricName rateMetricName = metrics.getRecordSendRate();
-            MetricName totalMetricName = metrics.getRecordSendTotal();
-            this.recordsPerRequestSensor.add(new Meter(rateMetricName, totalMetricName));
-            m = metrics.getRecordsPerRequestAvg();
-            this.recordsPerRequestSensor.add(m, new Avg());
+            this.recordsPerRequestSensor.add(new Meter(metrics.recordSendRate, metrics.recordSendTotal));
+            this.recordsPerRequestSensor.add(metrics.recordsPerRequestAvg, new Avg());
 
             this.retrySensor = metrics.sensor("record-retries");
-            rateMetricName = metrics.getRecordRetryRate();
-            totalMetricName = metrics.getRecordRetryTotal();
-            this.retrySensor.add(new Meter(rateMetricName, totalMetricName));
+            this.retrySensor.add(new Meter(metrics.recordRetryRate, metrics.recordRetryTotal));
 
             this.errorSensor = metrics.sensor("errors");
-            rateMetricName = metrics.getRecordErrorRate();
-            totalMetricName = metrics.getRecordErrorTotal();
-            this.errorSensor.add(new Meter(rateMetricName, totalMetricName));
+            this.errorSensor.add(new Meter(metrics.recordErrorRate, metrics.recordErrorTotal));
 
             this.maxRecordSizeSensor = metrics.sensor("record-size");
-            m = metrics.getRecordSizeMax();
-            this.maxRecordSizeSensor.add(m, new Max());
-            m = metrics.getRecordSizeAvg();
-            this.maxRecordSizeSensor.add(m, new Avg());
+            this.maxRecordSizeSensor.add(metrics.recordSizeMax, new Max());
+            this.maxRecordSizeSensor.add(metrics.recordSizeAvg, new Avg());
 
-            m = metrics.getRequestsInFlight();
-            this.metrics.addMetric(m, new Measurable() {
+            this.metrics.addMetric(metrics.requestsInFlight, new Measurable() {
                 public double measure(MetricConfig config, long now) {
                     return client.inFlightRequestCount();
                 }
             });
-            m = metrics.getMetadataAge();
-            metrics.addMetric(m, new Measurable() {
+            metrics.addMetric(metrics.metadataAge, new Measurable() {
                 public double measure(MetricConfig config, long now) {
                     return (now - metadata.lastSuccessfulUpdate()) / 1000.0;
                 }
             });
 
             this.batchSplitSensor = metrics.sensor("batch-split-rate");
-            rateMetricName = metrics.getBatchSplitRate();
-            totalMetricName = metrics.getBatchSplitTotal();
-            this.batchSplitSensor.add(new Meter(rateMetricName, totalMetricName));
+            this.batchSplitSensor.add(new Meter(metrics.batchSplitRate, metrics.batchSplitTotal));
         }
 
         private void maybeRegisterTopicMetrics(String topic) {
@@ -797,31 +783,31 @@ public class Sender implements Runnable {
                 Map<String, String> metricTags = Collections.singletonMap("topic", topic);
 
                 topicRecordCount = this.metrics.sensor(topicRecordsCountName);
-                MetricName rateMetricName = this.metrics.getTopicRecordSendRate(metricTags);
-                MetricName totalMetricName = this.metrics.getTopicRecordSendTotal(metricTags);
+                MetricName rateMetricName = this.metrics.topicRecordSendRate(metricTags);
+                MetricName totalMetricName = this.metrics.topicRecordSendTotal(metricTags);
                 topicRecordCount.add(new Meter(rateMetricName, totalMetricName));
 
                 String topicByteRateName = "topic." + topic + ".bytes";
                 Sensor topicByteRate = this.metrics.sensor(topicByteRateName);
-                rateMetricName = this.metrics.getTopicByteRate(metricTags);
-                totalMetricName = this.metrics.getTopicByteTotal(metricTags);
+                rateMetricName = this.metrics.topicByteRate(metricTags);
+                totalMetricName = this.metrics.topicByteTotal(metricTags);
                 topicByteRate.add(new Meter(rateMetricName, totalMetricName));
 
                 String topicCompressionRateName = "topic." + topic + ".compression-rate";
                 Sensor topicCompressionRate = this.metrics.sensor(topicCompressionRateName);
-                MetricName m = this.metrics.getTopicCompressionRate(metricTags);
+                MetricName m = this.metrics.topicCompressionRate(metricTags);
                 topicCompressionRate.add(m, new Avg());
 
                 String topicRetryName = "topic." + topic + ".record-retries";
                 Sensor topicRetrySensor = this.metrics.sensor(topicRetryName);
-                rateMetricName = this.metrics.getTopicRecordRetryRate(metricTags);
-                totalMetricName = this.metrics.getTopicRecordRetryTotal(metricTags);
+                rateMetricName = this.metrics.topicRecordRetryRate(metricTags);
+                totalMetricName = this.metrics.topicRecordRetryTotal(metricTags);
                 topicRetrySensor.add(new Meter(rateMetricName, totalMetricName));
 
                 String topicErrorName = "topic." + topic + ".record-errors";
                 Sensor topicErrorSensor = this.metrics.sensor(topicErrorName);
-                rateMetricName = this.metrics.getTopicRecordErrorRate(metricTags);
-                totalMetricName = this.metrics.getTopicRecordErrorTotal(metricTags);
+                rateMetricName = this.metrics.topicRecordErrorRate(metricTags);
+                totalMetricName = this.metrics.topicRecordErrorTotal(metricTags);
                 topicErrorSensor.add(new Meter(rateMetricName, totalMetricName));
             }
         }

@@ -60,7 +60,7 @@ public class FetchRequest extends AbstractRequest {
             new Field(FETCH_OFFSET_KEY_NAME, INT64, "Message offset."),
             new Field(MAX_BYTES_KEY_NAME, INT32, "Maximum bytes to fetch."));
 
-    // FETCH_REQUEST_PARTITION_V1 added log_start_offset field - the earliest available offset of partition data that can be consumed.
+    // FETCH_REQUEST_PARTITION_V5 added log_start_offset field - the earliest available offset of partition data that can be consumed.
     private static final Schema FETCH_REQUEST_PARTITION_V5 = new Schema(
             PARTITION_ID,
             new Field(FETCH_OFFSET_KEY_NAME, INT64, "Message offset."),
@@ -204,21 +204,24 @@ public class FetchRequest extends AbstractRequest {
         private int maxBytes = DEFAULT_RESPONSE_MAX_BYTES;
 
         public static Builder forConsumer(int maxWait, int minBytes, LinkedHashMap<TopicPartition, PartitionData> fetchData) {
-            return new Builder(null, CONSUMER_REPLICA_ID, maxWait, minBytes, fetchData, IsolationLevel.READ_UNCOMMITTED);
+            return forConsumer(maxWait, minBytes, fetchData, IsolationLevel.READ_UNCOMMITTED);
         }
 
-        public static Builder forConsumer(int maxWait, int minBytes, LinkedHashMap<TopicPartition, PartitionData> fetchData, IsolationLevel isolationLevel) {
-            return new Builder(null, CONSUMER_REPLICA_ID, maxWait, minBytes, fetchData, isolationLevel);
+        public static Builder forConsumer(int maxWait, int minBytes, LinkedHashMap<TopicPartition, PartitionData> fetchData,
+                                          IsolationLevel isolationLevel) {
+            return new Builder(ApiKeys.FETCH.oldestVersion(), ApiKeys.FETCH.latestVersion(), CONSUMER_REPLICA_ID,
+                    maxWait, minBytes, fetchData, isolationLevel);
         }
 
         public static Builder forReplica(short desiredVersion, int replicaId, int maxWait, int minBytes,
                                          LinkedHashMap<TopicPartition, PartitionData> fetchData) {
-            return new Builder(desiredVersion, replicaId, maxWait, minBytes, fetchData, IsolationLevel.READ_UNCOMMITTED);
+            return new Builder(desiredVersion, desiredVersion, replicaId, maxWait, minBytes, fetchData,
+                    IsolationLevel.READ_UNCOMMITTED);
         }
 
-        private Builder(Short desiredVersion, int replicaId, int maxWait, int minBytes,
+        private Builder(short minVersion, short maxVersion, int replicaId, int maxWait, int minBytes,
                         LinkedHashMap<TopicPartition, PartitionData> fetchData, IsolationLevel isolationLevel) {
-            super(ApiKeys.FETCH, desiredVersion);
+            super(ApiKeys.FETCH, minVersion, maxVersion);
             this.replicaId = replicaId;
             this.maxWait = maxWait;
             this.minBytes = minBytes;
