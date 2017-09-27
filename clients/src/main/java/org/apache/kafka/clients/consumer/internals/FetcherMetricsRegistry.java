@@ -33,20 +33,20 @@ public class FetcherMetricsRegistry {
     
     private final List<MetricNameTemplate> allTemplates;
 
-    private MetricName fetchSizeAvg;
-    private MetricName fetchSizeMax;
-    private MetricName bytesConsumedRate;
-    private MetricName bytesConsumedTotal;
-    private MetricName recordsPerRequestAvg;
-    private MetricName recordsConsumedRate;
-    private MetricName recordsConsumedTotal;
-    private MetricName fetchLatencyAvg;
-    private MetricName fetchLatencyMax;
-    private MetricName fetchRequestRate;
-    private MetricName fetchRequestTotal;
-    private MetricName recordsLagMax;
-    private MetricName fetchThrottleTimeAvg;
-    private MetricName fetchThrottleTimeMax;
+    public final MetricName fetchSizeAvg;
+    public final MetricName fetchSizeMax;
+    public final MetricName bytesConsumedRate;
+    public final MetricName bytesConsumedTotal;
+    public final MetricName recordsPerRequestAvg;
+    public final MetricName recordsConsumedRate;
+    public final MetricName recordsConsumedTotal;
+    public final MetricName fetchLatencyAvg;
+    public final MetricName fetchLatencyMax;
+    public final MetricName fetchRequestRate;
+    public final MetricName fetchRequestTotal;
+    public final MetricName recordsLagMax;
+    public final MetricName fetchThrottleTimeAvg;
+    public final MetricName fetchThrottleTimeMax;
 
     private MetricNameTemplate topicFetchSizeAvg;
     private MetricNameTemplate topicFetchSizeMax;
@@ -119,62 +119,6 @@ public class FetcherMetricsRegistry {
         
     }
     
-    public MetricName getFetchSizeAvg() {
-        return this.fetchSizeAvg;
-    }
-    
-    public MetricName getFetchSizeMax() {
-        return this.fetchSizeMax;
-    }
-    
-    public MetricName getBytesConsumedRate() {
-        return this.bytesConsumedRate;
-    }
-    
-    public MetricName getBytesConsumedTotal() {
-        return this.bytesConsumedTotal;
-    }
-
-    public MetricName getRecordsPerRequestAvg() {
-        return this.recordsPerRequestAvg;
-    }
-
-    public MetricName getRecordsConsumedRate() {
-        return this.recordsConsumedRate;
-    }
-
-    public MetricName getRecordsConsumedTotal() {
-        return this.recordsConsumedTotal;
-    }
-
-    public MetricName getFetchLatencyAvg() {
-        return this.fetchLatencyAvg;
-    }
-
-    public MetricName getFetchLatencyMax() {
-        return this.fetchLatencyMax;
-    }
-
-    public MetricName getFetchRequestRate() {
-        return this.fetchRequestRate;
-    }
-
-    public MetricName getFetchRequestTotal() {
-        return this.fetchRequestTotal;
-    }
-
-    public MetricName getRecordsLagMax() {
-        return this.recordsLagMax;
-    }
-
-    public MetricName getFetchThrottleTimeAvg() {
-        return this.fetchThrottleTimeAvg;
-    }
-
-    public MetricName getFetchThrottleTimeMax() {
-        return this.fetchThrottleTimeMax;
-    }
-
     public MetricName getTopicFetchSizeAvg(Map<String, String> metricTags) {
         return metrics.metricInstance(this.topicFetchSizeAvg, metricTags);
     }

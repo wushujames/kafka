@@ -937,9 +937,9 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
 
     public static Sensor throttleTimeSensor(FetcherMetricsRegistry metrics) {
         Sensor fetchThrottleTimeSensor = metrics.sensor("fetch-throttle-time");
-        fetchThrottleTimeSensor.add(metrics.getFetchThrottleTimeAvg(), new Avg());
+        fetchThrottleTimeSensor.add(metrics.fetchThrottleTimeAvg, new Avg());
 
-        fetchThrottleTimeSensor.add(metrics.getFetchThrottleTimeMax(), new Max());
+        fetchThrottleTimeSensor.add(metrics.fetchThrottleTimeMax, new Max());
 
         return fetchThrottleTimeSensor;
     }
@@ -1254,24 +1254,24 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             this.metrics = metrics;
 
             this.bytesFetched = metrics.sensor("bytes-fetched");
-            this.bytesFetched.add(metrics.getFetchSizeAvg(), new Avg());
-            this.bytesFetched.add(metrics.getFetchSizeMax(), new Max());
-            this.bytesFetched.add(new Meter(metrics.getBytesConsumedRate(),
-                    metrics.getBytesConsumedTotal()));
+            this.bytesFetched.add(metrics.fetchSizeAvg, new Avg());
+            this.bytesFetched.add(metrics.fetchSizeMax, new Max());
+            this.bytesFetched.add(new Meter(metrics.bytesConsumedRate,
+                    metrics.bytesConsumedTotal));
 
             this.recordsFetched = metrics.sensor("records-fetched");
-            this.recordsFetched.add(metrics.getRecordsPerRequestAvg(), new Avg());
-            this.recordsFetched.add(new Meter(metrics.getRecordsConsumedRate(),
-                    metrics.getRecordsConsumedTotal()));
+            this.recordsFetched.add(metrics.recordsPerRequestAvg, new Avg());
+            this.recordsFetched.add(new Meter(metrics.recordsConsumedRate,
+                    metrics.recordsConsumedTotal));
 
             this.fetchLatency = metrics.sensor("fetch-latency");
-            this.fetchLatency.add(metrics.getFetchLatencyAvg(), new Avg());
-            this.fetchLatency.add(metrics.getFetchLatencyMax(), new Max());
-            this.fetchLatency.add(new Meter(new Count(), metrics.getFetchRequestRate(),
-                    metrics.getFetchRequestTotal()));
+            this.fetchLatency.add(metrics.fetchLatencyAvg, new Avg());
+            this.fetchLatency.add(metrics.fetchLatencyMax, new Max());
+            this.fetchLatency.add(new Meter(new Count(), metrics.fetchRequestRate,
+                    metrics.fetchRequestTotal));
 
             this.recordsFetchLag = metrics.sensor("records-lag");
-            this.recordsFetchLag.add(metrics.getRecordsLagMax(), new Max());
+            this.recordsFetchLag.add(metrics.recordsLagMax, new Max());
         }
 
         private void recordTopicFetchMetrics(String topic, int bytes, int records) {
