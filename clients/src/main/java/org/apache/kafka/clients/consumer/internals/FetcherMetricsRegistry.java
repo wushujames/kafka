@@ -93,23 +93,18 @@ public class FetcherMetricsRegistry {
         this.topicTags = new HashSet<>(tags);
         this.topicTags.add("topic");
 
-        this.topicFetchSizeAvg = createTemplate("fetch-size-avg", "The average number of bytes fetched per request for a topic", 
-                topicTags);
-        this.topicFetchSizeMax = createTemplate("fetch-size-max", "The maximum number of bytes fetched per request for a topic", 
-                topicTags);
-        this.topicBytesConsumedRate = createTemplate("bytes-consumed-rate", "The average number of bytes consumed per second for a topic", 
-                topicTags);
-        this.topicBytesConsumedTotal = createTemplate("bytes-consumed-total", "The total number of bytes consumed for a topic",
-                topicTags);
+        // We can't create the MetricName up front for these, because we don't know the topic name yet.
+        this.topicFetchSizeAvg = createTopicTemplate("fetch-size-avg", "The average number of bytes fetched per request for a topic");
+        this.topicFetchSizeMax = createTopicTemplate("fetch-size-max", "The maximum number of bytes fetched per request for a topic");
+        this.topicBytesConsumedRate = createTopicTemplate("bytes-consumed-rate", "The average number of bytes consumed per second for a topic");
+        this.topicBytesConsumedTotal = createTopicTemplate("bytes-consumed-total", "The total number of bytes consumed for a topic");
 
-        this.topicRecordsPerRequestAvg = createTemplate("records-per-request-avg", "The average number of records in each request for a topic", 
-                topicTags);
-        this.topicRecordsConsumedRate = createTemplate("records-consumed-rate", "The average number of records consumed per second for a topic", 
-                topicTags);
-        this.topicRecordsConsumedTotal = createTemplate("records-consumed-total", "The total number of records consumed for a topic",
-                topicTags);
+        this.topicRecordsPerRequestAvg = createTopicTemplate("records-per-request-avg", "The average number of records in each request for a topic");
+        this.topicRecordsConsumedRate = createTopicTemplate("records-consumed-rate", "The average number of records consumed per second for a topic");
+        this.topicRecordsConsumedTotal = createTopicTemplate("records-consumed-total", "The total number of records consumed for a topic");
         
         /***** Partition level *****/
+        // We can't create the MetricName up front for these, because we don't know the topic and partition name.
         this.partitionRecordsLag = createTemplate("{topic}-{partition}.records-lag", "The latest lag of the partition", 
                 tags);
         this.partitionRecordsLagMax = createTemplate("{topic}-{partition}.records-lag-max", "The max lag of the partition", 
@@ -183,6 +178,10 @@ public class FetcherMetricsRegistry {
 
     private MetricName createMetricName(String name, String description) {
         return this.metrics.metricInstance(createTemplate(name, description, this.tags));
+    }
+
+    private MetricNameTemplate createTopicTemplate(String name, String description) {
+        return createTemplate(name, description, this.topicTags);
     }
 
     
