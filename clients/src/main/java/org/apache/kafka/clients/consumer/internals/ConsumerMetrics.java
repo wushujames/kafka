@@ -27,8 +27,8 @@ import org.apache.kafka.common.metrics.Metrics;
 
 public class ConsumerMetrics {
     
-    public FetcherMetricsRegistry fetcherMetrics;
-    private Metrics metrics;
+    private final Metrics metrics;
+    public final FetcherMetricsRegistry fetcherMetrics;
     
     public ConsumerMetrics(Metrics metrics) {
         this.metrics = metrics;
