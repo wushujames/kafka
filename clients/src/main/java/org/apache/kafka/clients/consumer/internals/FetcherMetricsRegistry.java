@@ -69,39 +69,25 @@ public class FetcherMetricsRegistry {
         this.allTemplates = new ArrayList<MetricNameTemplate>();
 
         /***** Client level *****/
-        this.fetchSizeAvg = createMetricName("fetch-size-avg", "The average number of bytes fetched per request", 
-                tags);
+        this.fetchSizeAvg = createMetricName("fetch-size-avg", "The average number of bytes fetched per request");
 
-        this.fetchSizeMax = createMetricName("fetch-size-max", "The maximum number of bytes fetched per request", 
-                tags);
-        this.bytesConsumedRate = createMetricName("bytes-consumed-rate", "The average number of bytes consumed per second", 
-                tags);
-        this.bytesConsumedTotal = createMetricName("bytes-consumed-total", "The total number of bytes consumed",
-                tags);
+        this.fetchSizeMax = createMetricName("fetch-size-max", "The maximum number of bytes fetched per request");
+        this.bytesConsumedRate = createMetricName("bytes-consumed-rate", "The average number of bytes consumed per second");
+        this.bytesConsumedTotal = createMetricName("bytes-consumed-total", "The total number of bytes consumed");
 
-        this.recordsPerRequestAvg = createMetricName("records-per-request-avg", "The average number of records in each request", 
-                tags);
-        this.recordsConsumedRate = createMetricName("records-consumed-rate", "The average number of records consumed per second", 
-                tags);
-        this.recordsConsumedTotal = createMetricName("records-consumed-total", "The total number of records consumed",
-                tags);
+        this.recordsPerRequestAvg = createMetricName("records-per-request-avg", "The average number of records in each request");
+        this.recordsConsumedRate = createMetricName("records-consumed-rate", "The average number of records consumed per second");
+        this.recordsConsumedTotal = createMetricName("records-consumed-total", "The total number of records consumed");
 
-        this.fetchLatencyAvg = createMetricName("fetch-latency-avg", "The average time taken for a fetch request.", 
-                tags);
-        this.fetchLatencyMax = createMetricName("fetch-latency-max", "The max time taken for any fetch request.", 
-                tags);
-        this.fetchRequestRate = createMetricName("fetch-rate", "The number of fetch requests per second.", 
-                tags);
-        this.fetchRequestTotal = createMetricName("fetch-total", "The total number of fetch requests.",
-                tags);
+        this.fetchLatencyAvg = createMetricName("fetch-latency-avg", "The average time taken for a fetch request.");
+        this.fetchLatencyMax = createMetricName("fetch-latency-max", "The max time taken for any fetch request.");
+        this.fetchRequestRate = createMetricName("fetch-rate", "The number of fetch requests per second.");
+        this.fetchRequestTotal = createMetricName("fetch-total", "The total number of fetch requests.");
 
-        this.recordsLagMax = createMetricName("records-lag-max", "The maximum lag in terms of number of records for any partition in this window", 
-                tags);
+        this.recordsLagMax = createMetricName("records-lag-max", "The maximum lag in terms of number of records for any partition in this window");
 
-        this.fetchThrottleTimeAvg = createMetricName("fetch-throttle-time-avg", "The average throttle time in ms", 
-                tags);
-        this.fetchThrottleTimeMax = createMetricName("fetch-throttle-time-max", "The maximum throttle time in ms", 
-                tags);
+        this.fetchThrottleTimeAvg = createMetricName("fetch-throttle-time-avg", "The average throttle time in ms");
+        this.fetchThrottleTimeMax = createMetricName("fetch-throttle-time-max", "The maximum throttle time in ms");
 
         /***** Topic level *****/
         this.topicTags = new HashSet<>(tags);
@@ -251,7 +237,7 @@ public class FetcherMetricsRegistry {
         this.metrics.removeSensor(name);
     }
 
-    private MetricName createMetricName(String name, String description, Set<String> tags) {
+    private MetricName createMetricName(String name, String description) {
         return this.metrics.metricInstance(createTemplate(name, description, this.tags));
     }
 
