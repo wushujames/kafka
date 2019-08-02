@@ -412,7 +412,7 @@ object DumpLogSegments {
     } finally fileRecords.closeHandlers()
   }
 
-  private def printBatchLevel(batch: FileLogInputStream.FileChannelRecordBatch, accumulativeBytes: Long, printJson: Boolean): mutable.Map[String, Any] = {
+  private def printBatchLevel(batch: FileLogInputStream.FileChannelRecordBatch, accumulativeBytes: Long, printJson: Boolean): Map[String, Any] = {
     val myMap = mutable.LinkedHashMap[String, Any]()
     if (batch.magic >= RecordBatch.MAGIC_VALUE_V2) {
       myMap += ("baseOffset" -> batch.baseOffset, 
@@ -440,7 +440,7 @@ object DumpLogSegments {
      myMap.foreach({case (key, value) => print(key + ": " + value + " ")})
      println("")
    }
-   myMap      
+   myMap.toMap      
   }
 
   class TimeIndexDumpErrors {
