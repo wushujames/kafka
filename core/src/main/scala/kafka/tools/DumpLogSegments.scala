@@ -357,10 +357,8 @@ object DumpLogSegments {
 
             
             if (batch.magic >= RecordBatch.MAGIC_VALUE_V2) {
-              val mapKey = record.headers.map(_.key)
-              val headersList = mutable.ArrayBuffer[String]();
-              recordMap += ("sequence" -> record.sequence,
-                  "headerKeys" -> mapKey)
+              recordMap += ("sequence" -> record.sequence, 
+                  "headerKeys" -> record.headers.map(_.key))
             } else {
               recordMap += ("crc" -> record.checksumOrNull,
                   "isvalid" -> record.isValid)
