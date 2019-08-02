@@ -400,12 +400,9 @@ object DumpLogSegments {
                  */
                 print(recordMap
                     .filterNot({ case (key, value) => key == "payload" && value == None})
-                    .map({ case (key, value) =>
-                    if (key == "headerKeys") {
-                        key.toString() + ": " + value.asInstanceOf[Array[String]].mkString("[", ",", "]");
-                    } else {
-                        key.toString() + ": " + value
-                    }
+                    .map({ 
+                      case ("headerKeys", value) => "headerKeys" + ": " + value.asInstanceOf[Array[String]].mkString("[", ",", "]");
+                      case (key, value) => key.toString() + ": " + value
                     }).mkString(" "))
                 println("")
             }
