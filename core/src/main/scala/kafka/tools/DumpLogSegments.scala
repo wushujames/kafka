@@ -380,7 +380,13 @@ object DumpLogSegments {
                   "payload" -> payload.getOrElse(None))
             }
             if (printJson) {
-              // print as Json
+                // Turn Scala None into java null, so that the json encoder can put write it out as null
+                val fullMap = batchMap ++ recordMap
+                val withNulls = fullMap.map({
+                  case (key, None) => (key, null)
+                  case other => other;
+                })
+                println(Json.encodeAsString(withNulls.asJava))
             } else {
                 print(s"$RecordIndent ")
                 /* if headerKeys, print as [] array
