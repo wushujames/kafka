@@ -350,8 +350,6 @@ object DumpLogSegments {
             }
             lastOffset = record.offset
 
-            print(s"$RecordIndent offset: ${record.offset} ${batch.timestampType}: ${record.timestamp} " +
-              s"keysize: ${record.keySize} valuesize: ${record.valueSize}")
             recordMap += ("offset" -> record.offset,
               batch.timestampType.toString() -> record.timestamp,
               "keysize" -> record.keySize,
@@ -359,14 +357,11 @@ object DumpLogSegments {
 
             
             if (batch.magic >= RecordBatch.MAGIC_VALUE_V2) {
-              print(" sequence: " + record.sequence + " headerKeys: " + record.headers.map(_.key).mkString("[", ",", "]"))
               val mapKey = record.headers.map(_.key)
               val headersList = mutable.ArrayBuffer[String]();
-//              record.headers.foreach(_ => headersList += _.key)
               recordMap += ("sequence" -> record.sequence,
                   "headerKeys" -> mapKey)
             } else {
-              print(s" crc: ${record.checksumOrNull} isvalid: ${record.isValid}")
               recordMap += ("crc" -> record.checksumOrNull,
                   "isvalid" -> record.isValid)
             }
@@ -376,24 +371,19 @@ object DumpLogSegments {
               ControlRecordType.fromTypeId(controlTypeId) match {
                 case ControlRecordType.ABORT | ControlRecordType.COMMIT =>
                   val endTxnMarker = EndTransactionMarker.deserialize(record)
-                  print(s" endTxnMarker: ${endTxnMarker.controlType} coordinatorEpoch: ${endTxnMarker.coordinatorEpoch}")
                   recordMap += ("endTxnMarker" -> endTxnMarker.controlType,
                       "coordinatorEpoch" -> endTxnMarker.coordinatorEpoch)
                 case controlType =>
-                  print(s" controlType: $controlType($controlTypeId)")
                   recordMap += ("controlType" -> ControlRecordType.fromTypeId(controlTypeId).toString())
               }
             } else if (printContents) {
               val (key, payload) = parser.parse(record)
-              key.foreach(key => print(s" key: $key"))
-              payload.foreach(payload => print(s" payload: $payload"))
               recordMap += ("key" -> key.getOrElse(None),
                   "payload" -> payload.getOrElse(None))
             }
             if (printJson) {
               // print as Json
             } else {
-                println()
                 print(s"$RecordIndent ")
                 /* if headerKeys, print as [] array
                  * if payload == None, then don't print anything
