@@ -57,7 +57,7 @@ object DumpLogSegments {
       suffix match {
         case Log.LogFileSuffix =>
           dumpLog(file, opts.shouldPrintDataLog, nonConsecutivePairsForLogFilesMap, opts.isDeepIteration,
-            opts.maxMessageSize, opts.messageParser)
+            opts.maxMessageSize, opts.messageParser, opts.shouldPrintJson)
         case Log.IndexFileSuffix =>
           dumpIndex(file, opts.indexSanityOnly, opts.verifyOnly, misMatchesForIndexFilesMap, opts.maxMessageSize)
         case Log.TimeIndexFileSuffix =>
@@ -326,7 +326,8 @@ object DumpLogSegments {
                       nonConsecutivePairsForLogFilesMap: mutable.Map[String, List[(Long, Long)]],
                       isDeepIteration: Boolean,
                       maxMessageSize: Int,
-                      parser: MessageParser[_, _]) {
+                      parser: MessageParser[_, _],
+                      printJson: Boolean) {
     val startOffset = file.getName.split("\\.")(0).toLong
     println("Starting offset: " + startOffset)
     val fileRecords = FileRecords.open(file, false)
@@ -335,7 +336,7 @@ object DumpLogSegments {
       var lastOffset = -1L
 
       for (batch <- fileRecords.batches.asScala) {
-        printBatchLevel(batch, validBytes)
+        printBatchLevel(batch, validBytes, printJson)
         if (isDeepIteration) {
           for (record <- batch.asScala) {
             if (lastOffset == -1)
@@ -381,19 +382,35 @@ object DumpLogSegments {
     } finally fileRecords.closeHandlers()
   }
 
-  private def printBatchLevel(batch: FileLogInputStream.FileChannelRecordBatch, accumulativeBytes: Long): Unit = {
-    if (batch.magic >= RecordBatch.MAGIC_VALUE_V2)
-      print("baseOffset: " + batch.baseOffset + " lastOffset: " + batch.lastOffset + " count: " + batch.countOrNull +
-        " baseSequence: " + batch.baseSequence + " lastSequence: " + batch.lastSequence +
-        " producerId: " + batch.producerId + " producerEpoch: " + batch.producerEpoch +
-        " partitionLeaderEpoch: " + batch.partitionLeaderEpoch + " isTransactional: " + batch.isTransactional +
-        " isControl: " + batch.isControlBatch)
-    else
-      print("offset: " + batch.lastOffset)
+  private def printBatchLevel(batch: FileLogInputStream.FileChannelRecordBatch, accumulativeBytes: Long, printJson: Boolean): mutable.Map[String, Any] = {
+    val myMap = mutable.LinkedHashMap[String, Any]()
+    if (batch.magic >= RecordBatch.MAGIC_VALUE_V2) {
+      myMap += ("baseOffset" -> batch.baseOffset, 
+              "lastOffset" -> batch.lastOffset, 
+              "count" -> batch.countOrNull,
+              "baseSequence" -> batch.baseSequence, 
+              "lastSequence" -> batch.lastSequence,
+              "producerId" -> batch.producerId, 
+              "producerEpoch" -> batch.producerEpoch,
+              "partitionLeaderEpoch" -> batch.partitionLeaderEpoch, 
+              "isTransactional" -> batch.isTransactional,
+              "isControl" -> batch.isControlBatch);
+    } else { 
+      myMap += ("offset" -> batch.lastOffset);
+    }
 
-    println(" position: " + accumulativeBytes + " " + batch.timestampType + ": " + batch.maxTimestamp +
-      " size: " + batch.sizeInBytes + " magic: " + batch.magic +
-      " compresscodec: " + batch.compressionType + " crc: " + batch.checksum + " isvalid: " + batch.isValid)
+    myMap += ("position" -> accumulativeBytes,
+            batch.timestampType.toString() -> batch.maxTimestamp,
+            "size" -> batch.sizeInBytes,
+            "magic" -> batch.magic,
+            "compresscodec" -> batch.compressionType,
+            "crc" -> batch.checksum,
+            "isvalid" ->batch.isValid)
+   if (!printJson) {
+     myMap.foreach({case (key, value) => print(key + ": " + value + " ")})
+     println("")
+   }
+   myMap      
   }
 
   class TimeIndexDumpErrors {
@@ -451,6 +468,7 @@ object DumpLogSegments {
   }
 
   private class DumpLogSegmentsOptions(args: Array[String]) extends CommandDefaultOptions(args) {
+    val printJson = parser.accepts("print-json", "if set, prints the data in json")
     val printOpt = parser.accepts("print-data-log", "if set, printing the messages content when dumping data logs. Automatically set if any decoder option is specified.")
     val verifyOpt = parser.accepts("verify-index-only", "if set, just verify the index log without printing its content.")
     val indexSanityOpt = parser.accepts("index-sanity-check", "if set, just checks the index sanity without printing its content. " +
@@ -501,6 +519,7 @@ object DumpLogSegments {
     lazy val indexSanityOnly: Boolean = options.has(indexSanityOpt)
     lazy val files = options.valueOf(filesOpt).split(",")
     lazy val maxMessageSize = options.valueOf(maxMessageSizeOpt).intValue()
+    lazy val shouldPrintJson: Boolean = options.has(printJson)
 
     def checkArgs(): Unit = CommandLineUtils.checkRequiredArgs(parser, options, filesOpt)
 
