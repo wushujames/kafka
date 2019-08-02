@@ -492,8 +492,8 @@ object DumpLogSegments {
   }
 
   private class DumpLogSegmentsOptions(args: Array[String]) extends CommandDefaultOptions(args) {
-    val printJson = parser.accepts("print-json", "if set, prints the data in json")
-    val printOpt = parser.accepts("print-data-log", "if set, printing the messages content when dumping data logs. Automatically set if any decoder option is specified.")
+    val printJson = parser.accepts("print-data-log-json", "if set, prints the data in json")
+    val printOpt = parser.accepts("print-data-log", "if set, printing the messages content when dumping data logs. Automatically set if any decoder option is specified. Automatically set if --print-data-log-json is enabled.")
     val verifyOpt = parser.accepts("verify-index-only", "if set, just verify the index log without printing its content.")
     val indexSanityOpt = parser.accepts("index-sanity-check", "if set, just checks the index sanity without printing its content. " +
       "This is the same check that is executed on broker startup to determine if an index needs rebuilding or not.")
@@ -536,7 +536,8 @@ object DumpLogSegments {
       options.has(offsetsOpt) ||
       options.has(transactionLogOpt) ||
       options.has(valueDecoderOpt) ||
-      options.has(keyDecoderOpt)
+      options.has(keyDecoderOpt) ||
+      options.has(printJson)
 
     lazy val isDeepIteration: Boolean = options.has(deepIterationOpt) || shouldPrintDataLog
     lazy val verifyOnly: Boolean = options.has(verifyOpt)
