@@ -33,6 +33,8 @@ import org.apache.kafka.common.utils.{Time, Utils}
 import scala.collection.{Map, mutable}
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.JavaConverters._
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.core.JsonGenerator
 
 object DumpLogSegments {
 
@@ -386,7 +388,9 @@ object DumpLogSegments {
                   case (key, None) => (key, null)
                   case other => other;
                 })
-                println(Json.encodeAsString(withNulls.asJava))
+                val mapper = new ObjectMapper();
+                mapper.getFactory().configure(JsonGenerator.Feature.ESCAPE_NON_ASCII, true);
+                println(mapper.writeValueAsString(withNulls.asJava))
             } else {
                 print(s"$RecordIndent ")
                 /* if headerKeys, print as [] array
