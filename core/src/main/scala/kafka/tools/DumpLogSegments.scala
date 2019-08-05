@@ -52,7 +52,8 @@ object DumpLogSegments {
 
     for (arg <- opts.files) {
       val file = new File(arg)
-      println(s"Dumping $file")
+      if (!opts.shouldPrintJson)
+        println(s"Dumping $file")
 
       val filename = file.getName
       val suffix = filename.substring(filename.lastIndexOf("."))
@@ -331,7 +332,8 @@ object DumpLogSegments {
                       parser: MessageParser[_, _],
                       printJson: Boolean) {
     val startOffset = file.getName.split("\\.")(0).toLong
-    println("Starting offset: " + startOffset)
+    if (!printJson)
+      println("Starting offset: " + startOffset)
     val fileRecords = FileRecords.open(file, false)
     try {
       var validBytes = 0L
